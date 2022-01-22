@@ -1,4 +1,5 @@
 use crate::raffle::Raffle;
+use crate::royalty::{Royalty, RoyaltyMap};
 use crate::constant::*;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -19,9 +20,10 @@ mod error;
 mod constant;
 mod util;
 mod event;
+mod raffle;
 mod mint;
 mod buy;
-mod raffle;
+mod royalty;
 
 #[ext_contract(ext_nft_receiver)]
 trait NonFungibleTokenReceiver {
@@ -53,6 +55,8 @@ pub struct Contract {
     metadata: NFTContractMetadata,
 
     raffle: Raffle,
+
+    royalties: Option<Royalty>,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -70,6 +74,7 @@ impl Contract {
     pub fn new(
         metadata: NFTContractMetadata,
         len: u64,
+        royalties: Option<RoyaltyMap>,
     ) -> Self {
         metadata.assert_valid();
         let owner_id = env::predecessor_account_id();
@@ -83,7 +88,8 @@ impl Contract {
                 Some(StorageKey::Approval)
             ),
             metadata: metadata,
-            raffle: Raffle::new(StorageKey::Raffle, len)
+            raffle: Raffle::new(StorageKey::Raffle, len),
+            royalties: royalties.map(|r| Royalty::new(r) ),
         }
     }
 }
