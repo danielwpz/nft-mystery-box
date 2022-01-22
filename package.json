@@ -1,0 +1,17 @@
+{
+  "name": "nft-mystery-box",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm run build:only && npm run copy",
+    "build:only": "cargo build --target wasm32-unknown-unknown --release",
+    "copy": "cp target/wasm32-unknown-unknown/release/*.wasm assets/",
+    "test": "npm run test:unit && npm run test:workspace",
+    "test:unit": "cargo test",
+    "test:workspace": "npm run build && npm run test:copy && cd tests && npm run test -- $@",
+    "test:copy": "cp assets/*.wasm tests/compiled-contracts/"
+  },
+  "author": "Daniel Wang",
+  "license": "ISC"
+}

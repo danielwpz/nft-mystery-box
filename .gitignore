@@ -1,0 +1,5 @@
+target/
+tests/node_modules/
+tests/compiled-contracts/
+
+neardev/
