@@ -1,6 +1,6 @@
 use crate::*;
 use near_sdk::{
-    near_bindgen,
+    near_bindgen, require,
 };
 use near_contract_standards::non_fungible_token::{
     Token, metadata::TokenMetadata,
@@ -16,6 +16,11 @@ impl Contract {
         let token_ids: Vec<u64> = (0..n)
             .map(|_| self.raffle.draw())
             .collect();
+
+        require!(
+            token_ids.len() == n as usize,
+            error::ERR_NO_ENOUGH_ITEMS
+        );
 
         let tokens = token_ids.iter()
             .map(|id| self.mint_to(id, owner_id))

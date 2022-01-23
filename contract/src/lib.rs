@@ -1,5 +1,5 @@
 use crate::raffle::Raffle;
-use crate::royalty::{Royalty, RoyaltyMap};
+use crate::royalty::{Royalty, RoyaltyMap, Percentage,};
 use crate::constant::*;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -57,6 +57,7 @@ pub struct Contract {
     raffle: Raffle,
 
     royalties: Option<Royalty>,
+    royalty_rate: Option<Percentage>
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -75,6 +76,7 @@ impl Contract {
         metadata: NFTContractMetadata,
         len: u64,
         royalties: Option<RoyaltyMap>,
+        royalty_rate: Option<Percentage>,
     ) -> Self {
         metadata.assert_valid();
         let owner_id = env::predecessor_account_id();
@@ -89,8 +91,16 @@ impl Contract {
             ),
             metadata: metadata,
             raffle: Raffle::new(StorageKey::Raffle, len),
-            royalties: royalties.map(|r| Royalty::new(r) ),
+            royalties: royalties.map(|r| Royalty::new(r)),
+            royalty_rate: royalty_rate,
         }
+    }
+
+    fn owner_of(
+        &self,
+        token_id: &String,
+    ) -> Option<AccountId> {
+        self.tokens.owner_by_id.get(token_id)
     }
 }
 
@@ -114,7 +124,7 @@ impl Contract {
         approval_id: Option<u64>,
         memo: Option<String>,
     ) {
-        let old_owner_id = self.tokens.owner_by_id.get(&token_id)
+        let old_owner_id = self.owner_of(&token_id)
             .expect(error::ERR_TOKEN_NOT_EXIST);
 
         let sender_id = env::predecessor_account_id();
@@ -151,7 +161,7 @@ impl Contract {
         assert_one_yocto();
 
         // this is to make sure error logs are consistant
-        let old_owner_id = self.tokens.owner_by_id.get(&token_id)
+        let old_owner_id = self.owner_of(&token_id)
             .expect(error::ERR_TOKEN_NOT_EXIST);
 
         let sender_id = env::predecessor_account_id();
