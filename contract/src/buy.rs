@@ -17,7 +17,7 @@ impl Contract {
         parse_near!("1N")
     }
 
-    fn mint_cost_for(
+    pub(crate) fn mint_cost_for(
         &self,
         n: u64
     ) -> Balance {
@@ -54,6 +54,9 @@ impl Contract {
         let buyer_id = env::signer_account_id();
         let deposit = env::attached_deposit();
         self.assert_deposit(n, deposit);
+
+        let income = self.mint_cost_for(n);
+        self.total_income += income;
 
         // draw and mint tokens
         let tokens = self.mint_many(n, &buyer_id);
@@ -112,5 +115,36 @@ impl Contract {
                 cost,
             )
         );
+    }
+}
+
+#[near_bindgen]
+impl Contract {
+    /// call this method to distribute primary market sell income 
+    pub fn distribute_income(
+        &mut self
+    ) {
+        if self.royalty.is_none() {
+            return;
+        }
+
+        let total_dist_amount = self.total_income - self.distributed_income;
+        if total_dist_amount <= 0 {
+            return;
+        }
+        let payouts = royalty::Payout::calculate_payout(
+            total_dist_amount,
+            &env::current_account_id(),
+            &self.royalty.as_ref().unwrap().get_royalties(),
+            royalty::PERCENTAGE_BASIS
+        );
+
+        self.distributed_income += total_dist_amount;
+
+        for (account, amount) in payouts.payout.iter() {
+            if *account != env::current_account_id() {
+                Promise::new(account.clone()).transfer(amount.0);
+            }
+        }
     }
 }
