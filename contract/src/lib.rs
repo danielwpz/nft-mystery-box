@@ -56,8 +56,7 @@ pub struct Contract {
 
     raffle: Raffle,
 
-    royalties: Option<Royalty>,
-    royalty_rate: Option<Percentage>
+    royalty: Option<Royalty>,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -79,7 +78,11 @@ impl Contract {
         royalty_rate: Option<Percentage>,
     ) -> Self {
         metadata.assert_valid();
+
         let owner_id = env::predecessor_account_id();
+        let royalty = royalty_rate.map(|rate| {
+            Royalty::new(royalties.unwrap(), rate)
+        });
 
         Self {
             tokens: NonFungibleToken::new(
@@ -91,8 +94,7 @@ impl Contract {
             ),
             metadata: metadata,
             raffle: Raffle::new(StorageKey::Raffle, len),
-            royalties: royalties.map(|r| Royalty::new(r)),
-            royalty_rate: royalty_rate,
+            royalty: royalty,
         }
     }
 

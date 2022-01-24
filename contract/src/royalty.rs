@@ -24,22 +24,31 @@ pub type RoyaltyMap = HashMap<AccountId, Percentage>;
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct Royalty {
     royalties: RoyaltyMap,
+    royalty_rate: Percentage,
 }
 
 impl Royalty {
     pub fn new(
-        royalties: RoyaltyMap
+        royalties: RoyaltyMap,
+        royalty_rate: Percentage,
     ) -> Self {
-        Self::assert_valid_royalties(&royalties);
+        Self::assert_valid_royalties(&royalties, royalty_rate);
 
         Self {
             royalties: royalties,
+            royalty_rate: royalty_rate,
         }
     }
 
     fn assert_valid_royalties(
         royalties: &RoyaltyMap,
+        royalty_rate: Percentage,
     ) {
+        require!(
+            royalty_rate <= PERCENTAGE_BASIS,
+            error::ERR_BAD_ROYALTY_RATE
+        );
+
         // should have no more than 10 accounts
         require!(
             royalties.len() <= 10,
@@ -72,8 +81,8 @@ impl Payout {
         total: Balance,
         beneficiary_id: &AccountId,
         royalty: &Royalty,
-        royalty_rate: Percentage,
     ) -> Self {
+        let royalty_rate = royalty.royalty_rate;
         require!(
             royalty_rate <= PERCENTAGE_BASIS,
             error::ERR_BAD_ROYALTY_RATE
@@ -142,14 +151,13 @@ impl NFTPayouts for Contract {
         let owner_id = self.owner_of(&token_id)
             .expect(error::ERR_TOKEN_NOT_EXIST);
 
-        let payouts = self.royalties.as_ref().map_or(
+        let payouts = self.royalty.as_ref().map_or(
             Payout::default(),
             |royalty| {
                 Payout::calculate_payout(
                     balance.into(),
                     &owner_id,
-                    &royalty,
-                    self.royalty_rate.unwrap_or_default()
+                    royalty,
                 )
             }
         );
