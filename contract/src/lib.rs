@@ -5,7 +5,7 @@ use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     near_bindgen, env, PanicOnDefault, Promise, PromiseOrValue,
     BorshStorageKey, ext_contract, assert_one_yocto,
-    AccountId,
+    AccountId, Balance,
 };
 use near_contract_standards::non_fungible_token::{
     NonFungibleToken, TokenId, Token,
@@ -57,6 +57,9 @@ pub struct Contract {
     raffle: Raffle,
 
     royalty: Option<Royalty>,
+
+    total_income: Balance,
+    distributed_income: Balance,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -95,6 +98,8 @@ impl Contract {
             metadata: metadata,
             raffle: Raffle::new(StorageKey::Raffle, len),
             royalty: royalty,
+            total_income: 0,
+            distributed_income: 0,
         }
     }
 

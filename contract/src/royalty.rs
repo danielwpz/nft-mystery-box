@@ -7,7 +7,7 @@ use near_sdk::{
 use std::collections::HashMap;
 
 pub type Percentage = u16;
-const PERCENTAGE_BASIS: Percentage = 10_000;
+pub const PERCENTAGE_BASIS: Percentage = 10_000;
 
 /// --- Royalty
 /// This is a map which shows how the royalty part
@@ -38,6 +38,12 @@ impl Royalty {
             royalties: royalties,
             royalty_rate: royalty_rate,
         }
+    }
+
+    pub fn get_royalties(
+        &self
+    ) -> &RoyaltyMap {
+        &self.royalties
     }
 
     fn assert_valid_royalties(
@@ -80,9 +86,9 @@ impl Payout {
     pub fn calculate_payout(
         total: Balance,
         beneficiary_id: &AccountId,
-        royalty: &Royalty,
+        royalties: &RoyaltyMap,
+        royalty_rate: Percentage,
     ) -> Self {
-        let royalty_rate = royalty.royalty_rate;
         require!(
             royalty_rate <= PERCENTAGE_BASIS,
             error::ERR_BAD_ROYALTY_RATE
@@ -92,7 +98,7 @@ impl Payout {
         let mut amount_for_beneficiary = total - amount_for_royalty;
 
         // calculate payout for royalties first
-        let mut payouts: HashMap<AccountId, U128> = royalty.royalties.iter().map(|(account, percent)| {
+        let mut payouts: HashMap<AccountId, U128> = royalties.iter().map(|(account, percent)| {
             let amount = apply_percent(amount_for_royalty, percent);
             (account.clone(), amount.into())
         })
@@ -157,7 +163,8 @@ impl NFTPayouts for Contract {
                 Payout::calculate_payout(
                     balance.into(),
                     &owner_id,
-                    royalty,
+                    &royalty.royalties,
+                    royalty.royalty_rate,
                 )
             }
         );

@@ -1,4 +1,4 @@
-import { createContract, createWorkspace } from "./test_helper";
+import { createContract, createWorkspace, ONE_NEAR } from "./test_helper";
 import Big from "big.js";
 import { NEAR } from "near-workspaces-ava";
 
@@ -76,4 +76,68 @@ workspace.test('payout calculation', async (test, {alice, contract}) => {
         amount.mul(0.9).toFixed(0),
         'alice payout wrong'
     );
+});
+
+workspace.test('income distribution', async (test, {alice, root}) => {
+    // create a new contract and buy some nfts
+    const lp1 = await root.createAccount('lp1');
+    const lp2 = await root.createAccount('lp2');
+    const lp3 = await root.createAccount('lp3');
+
+    const royalties = {};
+    royalties[lp1.accountId] = 2000;
+    royalties[lp2.accountId] = 3000;
+    royalties[lp3.accountId] = 5000;
+
+    const contract = await createContract(
+        root,
+        'income1',
+        10,
+        royalties,
+        1000
+    );
+
+    const deposit = Big(await contract.view('cost_for', { n: 2 }));
+    await alice.call(
+        contract,
+        'buy',
+        { n: 2 },
+        {
+            attachedDeposit: deposit.toFixed(0)
+        }
+    );
+
+    // verify distribution
+    const lps = [
+        lp1, lp2, lp3
+    ];
+    const initBalance = {};
+    for (const lp of lps) {
+        initBalance[lp.accountId] = Big(
+            (await lp.availableBalance()).toBigInt()
+        );
+    }
+
+    await alice.call(
+        contract,
+        'distribute_income',
+        {}
+    );
+
+    const totalIncome = ONE_NEAR.mul(2);
+
+    for (const lp of lps) {
+        const newBalance = Big(
+            (await lp.availableBalance()).toBigInt()
+        );
+
+        const income = newBalance.minus(initBalance[lp.accountId]);
+        const target = totalIncome
+            .mul(royalties[lp.accountId])
+            .div(10000);
+        test.true(
+            income.eq(target),
+            `lp should receive ${target}, but got ${income}`
+        );
+    }
 });
